@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="google-site-verification" content="Jm_b25LAotqgoIKi-tTBrsktZn9w05p3R_z9POHE0Ic" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nano  System</title>
+    <title>Nano Lottery System with Virtual File System</title>
     <style>
-        /* Styling for the big emoji */
         .emoji {
             font-size: 50px;
             text-align: center;
@@ -15,17 +13,24 @@
         .center-text {
             text-align: center;
         }
+        .log-box {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid black;
+            max-height: 200px;
+            overflow-y: scroll;
+        }
     </style>
 </head>
 <body>
 
     <!-- Big Laughing Emoji and Message -->
     <div class="emoji">😂</div>
-    <h1 class="center-text">We will give a reward to see this emoji for one person! and spending time on our site </h1>
+    <h1 class="center-text">We will give a reward to see this emoji for one person!</h1>
     
     <!-- Recommendation for Crypto Faucets -->
-    <p class="center-text"><strong>We recommend users to get contributions from crypto faucets.and this is demo project so no guarantee for nano and also use we recommend nault wallet for easy intergration and this is not lottery system and this will give users to chance to make 100x of thier faucet good luck all work is done manually and send nano manually and Contribution is 0.02 nano</strong></p>
-     <a href="https://hub.nano.org/faucets"> you can get faucets from here also</a>
+    <p class="center-text"><strong>We recommend users to get contributions from crypto faucets.</strong></p>
+
     <!-- User Wallet Connection -->
     <form id="walletForm" class="center-text">
         <label for="walletAddress">Enter your Nano wallet address:</label>
@@ -42,12 +47,24 @@
     <button id="joinLottery" disabled>Join Lottery for 0.02 Nano</button>
     <p id="lotteryStatus" class="center-text">Participants: 0/100</p>
 
+    <!-- Logs -->
+    <h3 class="center-text">Participant Log</h3>
+    <div id="log" class="log-box"></div>
+
+    <h3 class="center-text">Winners Log</h3>
+    <div id="winnersLog" class="log-box"></div>
+
     <script>
         // Global Variables
         const adminWallet = 'nano_3m1pir3qb3ciyxsupsmo3zf1t3f1yccx8pjokj97tk9ya4oq333h69utzu4f';
         const entryFee = 0.02;  // The fee to join the lottery
-        const participants = [];
+        let participants = [];
+        let winners = [];
         let userWallet = '';
+
+        // In-memory storage for virtual file system
+        let participantsFile = [];
+        let winnersFile = [];
 
         // Handle User Wallet Connection
         document.getElementById('walletForm').addEventListener('submit', function(event) {
@@ -60,10 +77,13 @@
         // Join Lottery
         document.getElementById('joinLottery').addEventListener('click', async function() {
             if (participants.length < 100) {
-                // Send 0.02 Nano to Admin Wallet
+                // Simulating sending 0.02 Nano to Admin Wallet
                 await sendNano(userWallet, adminWallet, entryFee);
 
+                // Log participant wallet to virtual file
                 participants.push(userWallet);
+                participantsFile.push(`Wallet: ${userWallet}`);
+                updateLog(participantsFile, "log");
                 document.getElementById('lotteryStatus').textContent = `Participants: ${participants.length}/100`;
 
                 // Once we hit 100 participants, start selecting a winner
@@ -79,100 +99,58 @@
         // Function to handle Chainlink VRF and select winner
         async function generateRandomWinner(participants) {
             try {
-                // Here you would call Chainlink VRF to get a verifiable random number
+                // Simulate Chainlink VRF
                 const randomIndex = await requestChainlinkVRF(participants.length);
 
                 // Select the winner
                 const winner = participants[randomIndex];
                 document.getElementById('lotteryStatus').textContent = `Winner selected: ${winner}`;
 
-                // Transfer funds to winner from admin wallet
+                // Log winner to a separate virtual file
+                winners.push(winner);
+                winnersFile.push(`Winner: ${winner}`);
+                updateLog(winnersFile, "winnersLog");
+
+                // Transfer funds to winner from admin wallet (simulated)
                 transferToWinner(winner, adminWallet);
+
+                // Clear the participants file for the next round
+                participants = [];
+                participantsFile = [];
+                updateLog(participantsFile, "log"); // Clear the log box
+
             } catch (error) {
                 console.error('Error in selecting a winner:', error);
                 alert('Failed to select a winner.');
             }
         }
 
-        // Request Chainlink VRF to get a secure random number
+        // Simulate Chainlink VRF to get a secure random number
         async function requestChainlinkVRF(maxParticipants) {
-            // Simulate Chainlink VRF API request - replace this with actual Chainlink VRF call
             return Math.floor(Math.random() * maxParticipants); // Placeholder for real VRF result
         }
 
-        // Function to send Nano from User Wallet to Admin Wallet
+        // Function to simulate sending Nano from User Wallet to Admin Wallet
         async function sendNano(fromWallet, toWallet, amount) {
-            const rawAmount = nanoToRaw(amount);
-            const payload = {
-                action: "send",
-                wallet: fromWallet,   // User's wallet ID
-                source: fromWallet,   // Source wallet address
-                destination: toWallet, // Admin's wallet
-                amount: rawAmount
-            };
-
-            const response = await fetch('https://proxy.nanos.cc/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            // Simulate transaction delay
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log(`Sent ${amount} Nano from ${fromWallet} to ${toWallet}`);
+                    resolve();
+                }, 1000);
             });
-
-            const result = await response.json();
-            if (result.error) {
-                console.error('Error sending Nano:', result.error);
-                alert('Failed to send Nano.');
-            } else {
-                console.log(`Successfully sent ${amount} Nano!`);
-            }
         }
 
-        // Helper function to convert Nano amount to raw format
-        function nanoToRaw(nanoAmount) {
-            return BigInt(nanoAmount * Math.pow(10, 30)).toString();
-        }
-
-        // Function to send the total amount collected from the Admin Wallet to the winner
+        // Function to simulate transfer of funds to the winner
         async function transferToWinner(winnerWallet, adminWallet) {
-            try {
-                const adminBalance = await checkBalance(adminWallet);
-                if (adminBalance > 0) {
-                    await sendNano(adminWallet, winnerWallet, adminBalance);
-                    alert(`Transferred ${adminBalance} Nano to the winner: ${winnerWallet}`);
-                } else {
-                    alert('No funds available to transfer.');
-                }
-            } catch (error) {
-                console.error('Error transferring funds:', error);
-                alert('Failed to transfer funds.');
-            }
+            console.log(`Transferring funds from ${adminWallet} to winner ${winnerWallet}`);
+            alert(`Winner ${winnerWallet} will receive all collected Nano!`);
         }
 
-        // Function to check wallet balance
-        async function checkBalance(walletAddress) {
-            const payload = {
-                action: "account_balance",
-                account: walletAddress
-            };
-
-            const response = await fetch('https://proxy.nanos.cc/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-            if (result.error) {
-                console.error('Error checking balance:', result.error);
-                return 0;
-            }
-
-            const balanceNano = rawToNano(result.balance);
-            return balanceNano;
-        }
-
-        // Helper function to convert raw amount to Nano
-        function rawToNano(rawAmount) {
-            return parseFloat(rawAmount) / Math.pow(10, 30);
+        // Update log box with participant or winner entries
+        function updateLog(logData, logElementId) {
+            const logElement = document.getElementById(logElementId);
+            logElement.innerHTML = logData.map(entry => `<p>${entry}</p>`).join('');
         }
     </script>
 </body>
