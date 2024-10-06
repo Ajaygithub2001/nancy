@@ -3,177 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nano skill game with Nanode RPC</title>
+    <title>Nano Lottery System</title>
+    <style>
+        /* Styling for the big emoji */
+        .emoji {
+            font-size: 50px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .center-text {
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h1>Nano Lottery System with Wallet and RPC Integration</h1>
-    <h3>Admin Wallet: <span id="admin-wallet">nano_3adminwallet....</span></h3>
-    <h4>Total Joined: <span id="total-joined">0</span>/100</h4>
 
-    <label for="user-wallet">Connect your NanoVault Wallet:</label>
-    <button id="connect-wallet-btn">Connect Wallet</button>
-    
-    <div id="wallet-info" style="display: none;">
-        <h3>Your Wallet: <span id="connected-wallet"></span></h3>
-        <label for="contribution-amount">Enter Contribution Amount (in Nano):</label>
-        <input type="number" id="contribution-amount" min="0.1" step="0.1">
-        <button id="send-funds-btn">Send Contribution</button>
-    </div>
+    <!-- Big Laughing Emoji and Message -->
+    <div class="emoji">😂</div>
+    <h1 class="center-text">We will give a reward to see this emoji for one person!</h1>
 
-    <h3>Participants:</h3>
-    <ul id="participants-list"></ul>
+    <!-- User Wallet Connection -->
+    <form id="walletForm" class="center-text">
+        <label for="walletAddress">Enter your Nano wallet address:</label>
+        <input type="text" id="walletAddress" name="walletAddress" required>
+        <button type="submit">Connect</button>
+    </form>
 
-    <h3 id="status-msg"></h3>
+    <p id="userStatus" class="center-text">Please enter your wallet address to join the lottery.</p>
+
+    <!-- Admin Wallet -->
+    <p class="center-text">Admin Wallet Address: <strong>nano_3m1pir3qb3ciyxsupsmo3zf1t3f1yccx8pjokj97tk9ya4oq333h69utzu4f</strong></p>
+
+    <!-- Lottery Info -->
+    <button id="joinLottery" disabled>Join Lottery for 0.02 Nano</button>
+    <p id="lotteryStatus" class="center-text">Participants: 0/100</p>
 
     <script>
-        const adminWallet = 'nano_3adminwallet....';
-        const leagueSize = 100;
-        let participants = [];
+        // Global Variables
+        const adminWallet = 'nano_3m1pir3qb3ciyxsupsmo3zf1t3f1yccx8pjokj97tk9ya4oq333h69utzu4f';
+        const entryFee = 0.02;  // The fee to join the lottery
+        const participants = [];
+        let userWallet = '';
 
-        const connectWalletBtn = document.getElementById('connect-wallet-btn');
-        const sendFundsBtn = document.getElementById('send-funds-btn');
-        const walletInfo = document.getElementById('wallet-info');
-        const connectedWalletSpan = document.getElementById('connected-wallet');
-        const participantsList = document.getElementById('participants-list');
-        const totalJoinedDisplay = document.getElementById('total-joined');
-        const statusMsg = document.getElementById('status-msg');
-
-        let userWallet = null;
-
-        connectWalletBtn.addEventListener('click', async function () {
-            userWallet = prompt('Please enter your NanoVault wallet address:');
-            
-            if (userWallet && userWallet.startsWith('nano_')) {
-                connectedWalletSpan.textContent = userWallet;
-                walletInfo.style.display = 'block';
-                connectWalletBtn.style.display = 'none';
-            } else {
-                alert('Invalid Nano wallet address!');
-                userWallet = null;
-            }
+        // Handle User Wallet Connection
+        document.getElementById('walletForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            userWallet = document.getElementById('walletAddress').value;
+            document.getElementById('userStatus').textContent = `Connected with wallet: ${userWallet}`;
+            document.getElementById('joinLottery').disabled = false;
         });
 
-        sendFundsBtn.addEventListener('click', async function () {
-            const contributionAmount = parseFloat(document.getElementById('contribution-amount').value);
+        // Join Lottery
+        document.getElementById('joinLottery').addEventListener('click', async function() {
+            if (participants.length < 100) {
+                // Send 0.02 Nano to Admin Wallet
+                await sendNano(userWallet, adminWallet, entryFee);
 
-            if (!contributionAmount || contributionAmount <= 0) {
-                alert('Please enter a valid amount!');
-                return;
-            }
-
-            try {
-                await sendNano(userWallet, adminWallet, contributionAmount);
                 participants.push(userWallet);
-                updateParticipants();
-                statusMsg.textContent = `Contribution of ${contributionAmount} Nano sent!`;
+                document.getElementById('lotteryStatus').textContent = `Participants: ${participants.length}/100`;
 
-                if (participants.length === leagueSize) {
-                    selectWinner();
+                // Once we hit 100 participants, start selecting a winner
+                if (participants.length === 100) {
+                    document.getElementById('lotteryStatus').textContent = 'Selecting winner...';
+
+                    // Generate a random number using Chainlink VRF
+                    generateRandomWinner(participants);
                 }
-            } catch (error) {
-                console.error('Error sending funds:', error);
-                alert('Failed to send funds.');
             }
         });
 
-        function updateParticipants() {
-            totalJoinedDisplay.textContent = participants.length;
-            participantsList.innerHTML = '';
-            participants.forEach(wallet => {
-                const li = document.createElement('li');
-                li.textContent = wallet;
-                participantsList.appendChild(li);
-            });
-        }
-
-        function selectWinner() {
-            statusMsg.textContent = 'Selecting a random winner...';
-
-            const randomIndex = Math.floor(Math.random() * participants.length);
-            const winner = participants[randomIndex];
-
-            statusMsg.textContent = `Winner is: ${winner}`;
-            transferToWinner(winner);
-        }
-
-        async function sendNano(fromWallet, toWallet, amount) {
+        // Function to handle Chainlink VRF and select winner
+        async function generateRandomWinner(participants) {
             try {
-                const rawAmount = nanoToRaw(amount); 
+                // Here you would call Chainlink VRF to get a verifiable random number
+                const randomIndex = await requestChainlinkVRF(participants.length);
 
-                const payload = {
-                    action: "send",
-                    wallet: fromWallet,
-                    source: fromWallet,
-                    destination: toWallet,
-                    amount: rawAmount
-                };
+                // Select the winner
+                const winner = participants[randomIndex];
+                document.getElementById('lotteryStatus').textContent = `Winner selected: ${winner}`;
 
-                const response = await fetch("https://proxy.nanos.cc/proxy", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-
-                if (result.error) {
-                    console.error('Error sending Nano:', result.error);
-                    alert('Failed to send Nano: ' + result.error);
-                    return;
-                }
-
-                console.log(`Successfully sent ${amount} Nano from ${fromWallet} to ${toWallet}`);
-                alert(`Successfully sent ${amount} Nano!`);
-
-                return result;
+                // Transfer funds to winner from admin wallet
+                transferToWinner(winner, adminWallet);
             } catch (error) {
-                console.error('Error during Nano transfer:', error);
-                alert('Failed to send Nano');
+                console.error('Error in selecting a winner:', error);
+                alert('Failed to select a winner.');
             }
         }
 
-        function nanoToRaw(nano) {
-            return BigInt(nano * Math.pow(10, 30)).toString();
+        // Request Chainlink VRF to get a secure random number
+        async function requestChainlinkVRF(maxParticipants) {
+            // Simulate Chainlink VRF API request - replace this with actual Chainlink VRF call
+            return Math.floor(Math.random() * maxParticipants); // Placeholder for real VRF result
         }
 
-        async function checkBalance(walletAddress) {
+        // Function to send Nano from User Wallet to Admin Wallet
+        async function sendNano(fromWallet, toWallet, amount) {
+            const rawAmount = nanoToRaw(amount);
             const payload = {
-                action: "account_balance",
-                account: walletAddress
+                action: "send",
+                wallet: fromWallet,   // User's wallet ID
+                source: fromWallet,   // Source wallet address
+                destination: toWallet, // Admin's wallet
+                amount: rawAmount
             };
 
-            const response = await fetch("https://proxy.nanos.cc/proxy", {
+            const response = await fetch('https://proxy.nanos.cc/proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             const result = await response.json();
+            if (result.error) {
+                console.error('Error sending Nano:', result.error);
+                alert('Failed to send Nano.');
+            } else {
+                console.log(`Successfully sent ${amount} Nano!`);
+            }
+        }
 
+        // Helper function to convert Nano amount to raw format
+        function nanoToRaw(nanoAmount) {
+            return BigInt(nanoAmount * Math.pow(10, 30)).toString();
+        }
+
+        // Function to send the total amount collected from the Admin Wallet to the winner
+        async function transferToWinner(winnerWallet, adminWallet) {
+            try {
+                const adminBalance = await checkBalance(adminWallet);
+                if (adminBalance > 0) {
+                    await sendNano(adminWallet, winnerWallet, adminBalance);
+                    alert(`Transferred ${adminBalance} Nano to the winner: ${winnerWallet}`);
+                } else {
+                    alert('No funds available to transfer.');
+                }
+            } catch (error) {
+                console.error('Error transferring funds:', error);
+                alert('Failed to transfer funds.');
+            }
+        }
+
+        // Function to check wallet balance
+        async function checkBalance(walletAddress) {
+            const payload = {
+                action: "account_balance",
+                account: walletAddress
+            };
+
+            const response = await fetch('https://proxy.nanos.cc/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
             if (result.error) {
                 console.error('Error checking balance:', result.error);
-                alert('Failed to check balance: ' + result.error);
-                return;
+                return 0;
             }
 
-            const balanceInNano = rawToNano(result.balance);
-            console.log(`Balance of ${walletAddress}: ${balanceInNano} Nano`);
-            return balanceInNano;
+            const balanceNano = rawToNano(result.balance);
+            return balanceNano;
         }
 
-        function rawToNano(raw) {
-            return parseFloat(raw) / Math.pow(10, 30);
-        }
-
-        async function transferToWinner(winnerWallet) {
-            const adminBalance = await checkBalance(adminWallet);
-
-            if (adminBalance > 0) {
-                await sendNano(adminWallet, winnerWallet, adminBalance);
-                alert(`Transferred ${adminBalance} Nano to the winner: ${winnerWallet}`);
-            } else {
-                alert('No funds available to transfer.');
-            }
+        // Helper function to convert raw amount to Nano
+        function rawToNano(rawAmount) {
+            return parseFloat(rawAmount) / Math.pow(10, 30);
         }
     </script>
 </body>
