@@ -31,6 +31,9 @@
             text-align: center;
             font-size: 16px;
         }
+        .ads li {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -84,12 +87,12 @@
 
     <!-- Ads Section for Faucet Links -->
     <div class="ads">
-        <h3>Get Nano from Faucets</h3>
+        <h3>Get Nano from Faucets → Ads</h3>
         <p>You can also get Nano from these faucet sites:</p>
         <ul>
-            <li><a href="https://nanofaucet.org" target="_blank">NanoFaucet.org</a></li>
-            <li><a href="https://freenanofaucet.com" target="_blank">FreeNanoFaucet.com</a></li>
-            <li><a href="https://nano-faucet.org" target="_blank">Nano-Faucet.org</a></li>
+            <li>→ <a href="https://nanofaucet.org" target="_blank">NanoFaucet.org</a></li>
+            <li>→ <a href="https://freenanofaucet.com" target="_blank">FreeNanoFaucet.com</a></li>
+            <li>→ <a href="https://nano-faucet.org" target="_blank">Nano-Faucet.org</a></li>
         </ul>
         <p>These sites allow you to earn Nano for free. Simply visit them and follow their instructions!</p>
         <p><strong>Reminder:</strong> Users are also paid to view these ads.</p>
@@ -163,7 +166,7 @@
                 document.getElementById('participantStatus').textContent = `Winner selected: ${winner}`;
 
                 winners.push(winner);
-                winnersFile.push(`Winner: ${winner}`);
+                winnersFile.push(`${winners.length}. Winner: ${winner}`); // Add index to the winners list
                 updateLog(winnersFile, "winnersLog");
 
                 participants = [];
